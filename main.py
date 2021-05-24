@@ -11,18 +11,20 @@ from sklearn.manifold import TSNE
 from model import AutoAttributeTree
 
 
-def main():
+def main(max_k=10, method='spectral_pam', random_state=None):
     df = pd.read_excel(os.path.join('data', 'data.xlsx'))
     data = df.iloc[:, np.r_[1, 4:10]]
 
     standard_scaler = preprocessing.StandardScaler()
     X = standard_scaler.fit_transform(data.iloc[:, 1:].values)
 
-    aat = AutoAttributeTree()
+    aat = AutoAttributeTree(max_k=max_k, method=method,
+                            random_state=random_state)
     aat.fit(data)
 
     # TSNE
-    tsne = TSNE(n_components=2, verbose=0, perplexity=30, n_iter=1000)
+    tsne = TSNE(n_components=2, verbose=0, perplexity=30,
+                n_iter=1000, random_state=random_state)
     data_embedded_tsne = tsne.fit_transform(X)
     # Niveles complejidad
     niveles = df.iloc[:, 3]
@@ -68,6 +70,4 @@ def main():
 
 if __name__ == '__main__':
     seed = 123
-    random.seed(seed)
-    np.random.seed(seed)
-    main()
+    main(method='pam', random_state=seed)

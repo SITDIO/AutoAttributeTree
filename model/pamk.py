@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy.stats import norm
+from sklearn_extra.cluster import KMedoids
+from sklearn.metrics import silhouette_score
+from .spectral import SpectralClustering
 
 
 def dudahart2(X, clustering, alpha=0.001):
@@ -29,13 +32,13 @@ def dudahart2(X, clustering, alpha=0.001):
 
     for clus, cln in zip(values, counts):
         clx = X[clustering == clus, :]
-        cclx < - np.cov(clx)
+        cclx = np.cov(clx.T)
 
         if cln < 2:
             cclx = 0
         W += (cln - 1) * cclx
 
-    W1 = (n-1) * np.cov(X)
+    W1 = (n-1) * np.cov(X.T)
     dh = np.sum(np.diag(W))/np.sum(np.diag(W1))
     z = norm.ppf(1 - alpha)
     compare = 1 - 2/(np.pi * p) - z*np.sqrt(2 * (1 - 8/(np.pi**2 * p)) / (n*p))
@@ -47,3 +50,38 @@ def dudahart2(X, clustering, alpha=0.001):
            'cluster1': cluster1, 'alpha': alpha, 'z': z}
 
     return out
+
+
+def pamk(X, krange=np.arange(1, 11), method='pam', n_components=10,
+         alpha=0.001, random_state=None):
+
+    cluster1 = 1 in krange
+    avg_sw = np. zeros(len(krange))
+    pams = {1: None}
+    for i, k in enumerate(krange):
+        if k != 1:
+            if method == 'pam':
+                clust_method = KMedoids(n_clusters=k, init='k-medoids++', max_iter=300,
+                                        random_state=None, method='pam')
+                clust_method.maps_ = X
+            elif method == 'spectral_pam':
+                clust_method = SpectralClustering(n_clusters=k, n_components=n_components,
+                                                  random_state=random_state,
+                                                  assign_labels='kmedoids')
+            else:
+                raise ValueError('Method not implemented')
+
+            pams[k] = clust_method.fit(X)
+            avg_sw[i] = silhouette_score(
+                clust_method.maps_, clust_method.labels_)
+
+    k_best = krange[np.argmax(avg_sw)]
+    if cluster1:
+        cxx = dudahart2(pams[2].maps_, pams[2].labels_, alpha=alpha)
+        avg_sw[0] = cxx['p_value']
+        cluster1 = cxx['cluster1']
+
+    if cluster1:
+        k_best = 1
+
+    return pams[k_best], k_best, avg_sw

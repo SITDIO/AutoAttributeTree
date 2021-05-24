@@ -2,28 +2,27 @@
 
 import numpy as np
 import pandas as pd
-import rpy2.robjects as robjects
 from collections import defaultdict
 from sklearn import preprocessing
-from rpy2.robjects import pandas2ri
-from rpy2.robjects.packages import importr
-
-pandas2ri.activate()
-
-fpc = importr('fpc')
+from .pamk import pamk
 
 
-def level_pamk(data, max_k=10, offset=0, alpha=1e-3, seed=robjects.NULL):
+def level_pamk(data, max_k=10, offset=0, alpha=1e-3, method='pam', random_state=None):
     id_col = data.iloc[:, 0]
-    X = data.iloc[:, 1:]
+    X = data.iloc[:, 1:].values
     max_k = min(len(data)-1, max_k)
-    krange = robjects.IntVector(range(1, max_k+1))
-    pam_res = fpc.pamk(X, krange=krange, alpha=alpha, seed=seed)
-    medoids = id_col.iloc[pam_res.rx2('pamobject').rx2('id.med')-1]
-    medoids = pd.DataFrame(
-        {'cluster': range(offset+1, offset+1+len(medoids)), 'id': medoids})
-    clusters = pd.DataFrame({'id': id_col, 'cluster': pam_res.rx2(
-        'pamobject').rx2('clustering') + offset})
+    pam_res = pamk(X, krange=np.arange(1, max_k+1), method=method, n_components=10,
+                   alpha=alpha, random_state=random_state)
+
+    if pam_res[1] != 1:
+        medoids = id_col.iloc[pam_res[0].medoid_indices_]
+        medoids = pd.DataFrame(
+            {'cluster': np.arange(offset + 1, offset + 1 + pam_res[1]), 'id': medoids})
+        clusters = pd.DataFrame(
+            {'id': id_col, 'cluster': pam_res[0].labels_ + offset + 1})
+    else:
+        medoids = pd.DataFrame()
+        clusters = pd.DataFrame()
 
     return clusters, medoids
 
@@ -49,7 +48,7 @@ class Node():
 
 
 class AutoAttributeTree():
-    def __init__(self, max_k=10):
+    def __init__(self, max_k=10, method='spectral_pam', random_state=None):
         self.nodes = []
         self.incomplete_nodes = [0]
         self.medoids = pd.DataFrame()
@@ -58,6 +57,8 @@ class AutoAttributeTree():
         self.max_k = max_k
         self.leaf_nodes_idx = []
         self.standard_scaler = preprocessing.StandardScaler()
+        self.method = method
+        self.random_state = random_state
 
     def fit(self, data):
         scaled_data = data.copy()
@@ -75,7 +76,8 @@ class AutoAttributeTree():
                 level = self.nodes2levels[current_node_idx]
             if len(data_node) > 2:
                 clustered_data, medoids = level_pamk(
-                    data_node, max_k=self.max_k, offset=len(self.nodes)-1)
+                    data_node, max_k=self.max_k, offset=len(self.nodes)-1,
+                    method=self.method, random_state=self.random_state)
             else:
                 print(
                     f'Node {current_node} did not divided because of too few data')

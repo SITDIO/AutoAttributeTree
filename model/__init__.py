@@ -9,3 +9,4 @@
 Auto Attribute Tree model
 """
 from .auto_attribute_tree import AutoAttributeTree
+from .pamk import pamk

@@ -245,15 +245,16 @@ def spectral_clustering_mod(affinity, *, n_clusters=8, n_components=None,
         print(f'Computing label assignment using {assign_labels}')
 
     if assign_labels == 'kmedoids':
-        _, labels, _ = k_means(maps, n_clusters, random_state=random_state,
-                               n_init=n_init, verbose=verbose)
+        cluster_centers, labels, _ = k_medoids(maps, n_clusters, random_state=random_state,
+                                               n_init=n_init, verbose=verbose)
     elif assign_labels == 'kmeans':
-        _, labels, _ = k_means(maps, n_clusters, random_state=random_state,
-                               n_init=n_init, verbose=verbose)
+        cluster_centers, labels, _ = k_means(maps, n_clusters, random_state=random_state,
+                                             n_init=n_init, verbose=verbose)
     else:
-        labels = discretize(maps, random_state=random_state)
+        cluster_centers, labels = None, discretize(
+            maps, random_state=random_state)
 
-    return labels
+    return labels, maps, cluster_centers
 
 
 class SpectralClustering(ClusterMixin, BaseEstimator):
@@ -466,15 +467,17 @@ class SpectralClustering(ClusterMixin, BaseEstimator):
                                                      **params)
 
         random_state = check_random_state(self.random_state)
-        self.labels_ = spectral_clustering_mod(self.affinity_matrix_,
-                                               n_clusters=self.n_clusters,
-                                               n_components=self.n_components,
-                                               eigen_solver=self.eigen_solver,
-                                               random_state=random_state,
-                                               n_init=self.n_init,
-                                               eigen_tol=self.eigen_tol,
-                                               assign_labels=self.assign_labels,
-                                               verbose=self.verbose)
+        self.labels_, \
+            self.maps_, \
+            self.cluster_centers_ = spectral_clustering_mod(self.affinity_matrix_,
+                                                            n_clusters=self.n_clusters,
+                                                            n_components=self.n_components,
+                                                            eigen_solver=self.eigen_solver,
+                                                            random_state=random_state,
+                                                            n_init=self.n_init,
+                                                            eigen_tol=self.eigen_tol,
+                                                            assign_labels=self.assign_labels,
+                                                            verbose=self.verbose)
         return self
 
     def fit_predict(self, X, y=None):
@@ -574,6 +577,7 @@ def k_medoids(X, n_clusters, *, init='k-medoids++', max_iter=300,
         n_clusters=n_clusters, init=init, max_iter=max_iter,
         random_state=random_state, method=algorithm
     ).fit(X)
+
     if return_n_iter:
         return est.cluster_centers_, est.labels_, est.inertia_, est.n_iter_
     else:
