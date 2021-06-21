@@ -51,7 +51,7 @@ def main(max_k=10, method='pam', random_state=None):
     # Niveles complejidad
     niveles = df.iloc[:, 3]
     plot_tsne(X, niveles, title='Complexity levels', savepath=os.path.join(
-        'figs', 'complexity_levels.svg'), random_state=random_state)
+        'figs', 'complexity_levels.pdf'), random_state=random_state)
 
     for l in range(1, len(aat.levels2nodes)):
         clusters = aat.get_clusters(level=l)
@@ -62,7 +62,7 @@ def main(max_k=10, method='pam', random_state=None):
         # Clusters
         clust = clusters.iloc[:, 1]
         plot_tsne(X, clust, title=f'Auto Attribute Tree level {l}', savepath=os.path.join(
-            'figs', f'aat_level{l}.svg'), random_state=random_state)
+            'figs', f'aat_level{l}.pdf'), random_state=random_state)
 
 
 if __name__ == '__main__':
