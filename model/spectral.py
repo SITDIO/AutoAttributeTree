@@ -469,15 +469,15 @@ class SpectralClustering(ClusterMixin, BaseEstimator):
         random_state = check_random_state(self.random_state)
         self.labels_, \
             self.maps_, \
-            self.cluster_centers_ = spectral_clustering_mod(self.affinity_matrix_,
-                                                            n_clusters=self.n_clusters,
-                                                            n_components=self.n_components,
-                                                            eigen_solver=self.eigen_solver,
-                                                            random_state=random_state,
-                                                            n_init=self.n_init,
-                                                            eigen_tol=self.eigen_tol,
-                                                            assign_labels=self.assign_labels,
-                                                            verbose=self.verbose)
+            self.medoid_indices_ = spectral_clustering_mod(self.affinity_matrix_,
+                                                           n_clusters=self.n_clusters,
+                                                           n_components=self.n_components,
+                                                           eigen_solver=self.eigen_solver,
+                                                           random_state=random_state,
+                                                           n_init=self.n_init,
+                                                           eigen_tol=self.eigen_tol,
+                                                           assign_labels=self.assign_labels,
+                                                           verbose=self.verbose)
         return self
 
     def fit_predict(self, X, y=None):
@@ -579,6 +579,6 @@ def k_medoids(X, n_clusters, *, init='k-medoids++', max_iter=300,
     ).fit(X)
 
     if return_n_iter:
-        return est.cluster_centers_, est.labels_, est.inertia_, est.n_iter_
+        return est.medoid_indices_, est.labels_, est.inertia_, est.n_iter_
     else:
-        return est.cluster_centers_, est.labels_, est.inertia_
+        return est.medoid_indices_, est.labels_, est.inertia_

@@ -11,7 +11,31 @@ from sklearn.manifold import TSNE
 from model import AutoAttributeTree
 
 
-def main(max_k=10, method='spectral_pam', random_state=None):
+def plot_tsne(X, clust, title='', savepath='fig.png', random_state=None):
+    # TSNE
+    tsne = TSNE(n_components=2, verbose=0, perplexity=30,
+                n_iter=1000, random_state=random_state)
+    data_embedded_tsne = tsne.fit_transform(X)
+    n_clust = len(set(list(clust)))
+
+    ax = sns.scatterplot(
+        x=data_embedded_tsne[:, 0], y=data_embedded_tsne[:, 1],
+        hue=clust,
+        palette=sns.color_palette("hls", n_clust),
+        legend="full",
+        alpha=0.5
+    )
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.95, box.height])
+    ax.set_title(f't-SNE {title}')
+    ax.set_xlabel('Dimension 1')
+    ax.set_ylabel('Dimension 2')
+    ax.legend(title='Cluster', loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.savefig(savepath)
+    plt.close()
+
+
+def main(max_k=10, method='pam', random_state=None):
     df = pd.read_excel(os.path.join('data', 'data.xlsx'))
     data = df.iloc[:, np.r_[1, 4:10]]
 
@@ -22,52 +46,27 @@ def main(max_k=10, method='spectral_pam', random_state=None):
                             random_state=random_state)
     aat.fit(data)
 
-    # TSNE
-    tsne = TSNE(n_components=2, verbose=0, perplexity=30,
-                n_iter=1000, random_state=random_state)
-    data_embedded_tsne = tsne.fit_transform(X)
+    aat.medoids.to_csv(os.path.join('results', 'medoids.csv'), index=False)
+
     # Niveles complejidad
     niveles = df.iloc[:, 3]
-    n_niveles = len(set(list(niveles)))
+    plot_tsne(X, niveles, title='Complexity levels', savepath=os.path.join(
+        'figs', 'complexity_levels.svg'), random_state=random_state)
 
-    ax = sns.scatterplot(
-        x=data_embedded_tsne[:, 0], y=data_embedded_tsne[:, 1],
-        hue=niveles,
-        palette=sns.color_palette("hls", n_niveles),
-        legend="full",
-        alpha=0.5
-    )
-    ax.set_title(f't-SNE Complexity Levels')
-    ax.set_xlabel('Dimension 1')
-    ax.set_ylabel('Dimension 2')
-    plt.savefig(os.path.join('figs', 'complexity_levels.png'))
-    plt.close()
-
-    for l in range(1, 5):
+    for l in range(1, len(aat.levels2nodes)):
         clusters = aat.get_clusters(level=l)
         clusters = pd.merge(data.iloc[:, 0], clusters, on='Codigo', how='left')
+        clusters.to_csv(os.path.join(
+            'results', f'clusters_level_{l}.csv'), index=False)
 
         # Clusters
         clust = clusters.iloc[:, 1]
-        n_clust = len(set(list(clust)))
-
-        ax = sns.scatterplot(
-            x=data_embedded_tsne[:, 0], y=data_embedded_tsne[:, 1],
-            hue=clust,
-            palette=sns.color_palette("hls", n_clust),
-            legend="full",
-            alpha=0.5
-        )
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.95, box.height])
-        ax.set_title(f't-SNE Auto Attribute Tree level {l}')
-        ax.set_xlabel('Dimension 1')
-        ax.set_ylabel('Dimension 2')
-        ax.legend(title='Cluster', loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.savefig(os.path.join('figs', f'aat_level{l}.png'))
-        plt.close()
+        plot_tsne(X, clust, title=f'Auto Attribute Tree level {l}', savepath=os.path.join(
+            'figs', f'aat_level{l}.svg'), random_state=random_state)
 
 
 if __name__ == '__main__':
     seed = 123
+    random.seed(seed)
+    np.random.seed(seed)
     main(method='pam', random_state=seed)
